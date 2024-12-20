@@ -14,31 +14,6 @@ static void set_env(char *name, char *val, pam_handle_t *pam_handle);
 int pam_conversation_func(int num_msg, const struct pam_message **msg, struct pam_response **resp,void *appdata_ptr); //callback function
 int login(char *username, char *password,pam_handle_t **pam_handle);
 int logout(pam_handle_t *pam_handle);
-int main(int argc, char **argv){
-	//arg processing
-	if (argc < 3){
-		fprintf(stderr,"requires 2 args of username and password\n");
-		return 1;
-	}
-	//variables
-	int result; //generic
-	char *username = argv[1];
-	char *password = argv[2];
-
-	//pam related
-	pam_handle_t *pam_handle;
-	
-	//login
-	result = login(username,password,NULL/*&pam_handle*/); //will clean itself up if failed
-	if (result < 0) return 1;
-	printf("logged in.\n");
-
-	//logout
-	result = logout(NULL/*pam_handle*/);
-	if (result < 0) return 1;
-	printf("logged out.\n");
-	return 0;
-}
 static void set_env(char *name, char *val, pam_handle_t *pam_handle){
 	//                                                  '\0' '='
 	size_t env_string_size = strlen(name) + strlen(val) +1  +1;
