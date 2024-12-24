@@ -10,3 +10,5 @@ pam.o : src/pam.c
 	$(CC) $(CFLAGS) -c src/pam.c
 graphical-interface.o : src/graphical-interface.c
 	$(CC) $(CFLAGS) -c src/graphical-interface.c
+clean : 
+	rm *.o
