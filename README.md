@@ -5,7 +5,7 @@ Big thanks to https://github.com/gsingh93/display-manager/tree/master for the ma
 
 # Requirements
 
-This requires the libpam-dev, libgtk-4-dev package to be installed
+This requires the libpam-dev, libgtk-4-dev, libncurses-dev package to be installed
 
 # Compilation
 
