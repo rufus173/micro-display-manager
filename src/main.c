@@ -4,45 +4,107 @@
 #include "pam.h"
 #include <wait.h>
 #include "graphical-interface.h"
-int start_new_session(char *username, char *password);
+#include <pwd.h>
+#include <grp.h>
+static void init_env(char *username);
+static int set_ids(char *user);
 int main(int argc, char **argv){
-
-	//calls with args username and password when login is pressed
-	register_login_button_function(start_new_session);
-
-	//start user interface
-	start_gui(argc,argv);
-
-	//start a shell
-	pid_t child_pid = fork();
-	if (child_pid < 0){
-		perror("fork");
+	if (getuid() != 0){
+		fprintf(stderr,"Must be run as root.\n");
 		return -1;
 	}
-	if (child_pid == 0){
-		//child process
-		//execl("/bin/bash","--login",NULL);
-		sleep(10);
-		exit(0);
+	if (argc < 3){
+		fprintf(stderr,"not enough args. expected username and password\n");
+		return 1;
 	}
-	int result = waitpid(child_pid,NULL,0);
-	if (result < 0){
-		perror("waitpid");
+	char *user = argv[1];
+	char *password = argv[2];
+
+	//-------- mainloop to allow more then one login and logout ---------
+	for (;;){
+		//------------ check credentials with pam ------------
+		printf("verifying credentials\n");
+		int result = pam_login(user,password,NULL); //switch to desired user
+		if (result < 0){
+			fprintf(stderr,"could not log in\n");
+			goto logout;
+		}
+		printf("pam login successfull.\n");
+		
+		//------------ on success fork into new process -------
+		pid_t child_pid = fork();
+		if (child_pid < 0){
+			perror("fork");
+			return -1;
+		}
+		if (child_pid == 0){
+			//==== child process ====
+			int result = set_ids(user);
+			if (result < 0){
+				fprintf(stderr,"Could not change user ids.\n");
+				exit(1);
+			}
+			init_env(user);
+			execl("/bin/bash","/bin/bash",NULL);
+			exit(0);
+		}
+		//----------- wait for fork to exit -------------
+		int child_return;
+		result = waitpid(child_pid,&child_return,0);
+		if (result < 0){
+			perror("waitpid");
+			return -1;
+		}
+		int child_status = WEXITSTATUS(child_return); //the return status of the fork
+		//------------ log user out when the fork exits ---------
+		logout:
+		pam_logout(NULL); //dont care about result
+		break;
+	}
+	//---------------- exit cleanup ------------	
+}
+static int set_ids(char *user){
+	struct passwd *pw = getpwnam(user);
+	if (pw == NULL){
+		perror("getpwnam");
 		return -1;
 	}
 	
-	//logout
-	logout(NULL); //dont care about result
-}
-int start_new_session(char *username, char *password){
-	//login with pam
-	int result = login(username,password,NULL);
+	//group id
+	int result = setgid(pw->pw_gid);
 	if (result < 0){
-		show_message_popup("Incorrect username or password.");
-		fprintf(stderr,"login failed.\n");
+		perror("setgid");
 		return -1;
-		//interface stays open to try again
+	}
+	//other non primary groups
+	result = initgroups(pw->pw_name,pw->pw_gid);
+	if (result < 0){
+		perror("initgroups");
+		return -1;
 	}
 
-	return 0; //closes graphical interface and continues in main func 
+	//user id
+	result = setuid(pw->pw_uid);
+	if (result < 0){
+		perror("setgid");
+		return -1;
+	}
+
+	//DOUBLE CHECK uid and euid are correct
+	if ((geteuid() != pw->pw_uid) && (getuid() != pw->pw_uid)){
+		fprintf(stderr,"expected uid missmatch: setting uid failed.\n");
+		return -1;
+	}
+
+	//success!
+	return 0;
+}
+static void init_env(char *username){
+	//get passwd struct
+	struct passwd *password = getpwnam(username);
+	setenv("HOME",password->pw_dir,1);
+	setenv("USER",password->pw_name,1);
+	setenv("LOGNAME",password->pw_name,1);
+	setenv("PWD",password->pw_dir,1);
+	setenv("SHELL",password->pw_shell,1);
 }

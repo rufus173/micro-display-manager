@@ -2,18 +2,30 @@
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 static GtkApplication *app;
 static GtkEntryBuffer *username_entry_buffer;
 static GtkEntryBuffer *password_entry_buffer;
 static int (*login_button_function)(char *,char *) = NULL;
+static pid_t x_pid;
 
+static void end_x();
+static int start_x(const char *display, const char *vt);
 static void login_button_callback(GtkWidget *widget, gpointer data);
 static void activate(GtkApplication *app, gpointer data);
 void show_message_popup(char *);
 void register_login_button_function(int (*registered_function)(char *,char *));
+
 int start_gui(int argc, char **argv){
-	int result;
+	int result = 0;
+
+	result = start_x(":1","vt01");
+	if (result < 0){
+		fprintf(stderr,"couldnt start x server.\n");
+		return 1;
+	}
 
 	app = gtk_application_new("com.github.rufus173.DisplayManager",0); //ubuntu lts makes me sad cause no G_APPLICATION_DEFAULT_FLAGS
 	g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
@@ -103,4 +115,25 @@ void show_message_popup(char *message){
 	g_signal_connect_swapped(close_button,"clicked",G_CALLBACK(gtk_window_destroy),popup_window);
 
 	gtk_window_present(GTK_WINDOW(popup_window));
+}
+static int start_x(const char *display, const char *vt){
+	x_pid = fork();
+	if (x_pid < 0){
+		fprintf(stderr,"could not fork to start x server.\n");
+		perror("fork");
+		return -1;
+	}
+	if (x_pid == 0){ //child
+		//char command_buffer[1024];
+		//snprintf(command_buffer,sizeof(command_buffer), "/usr/bin/X %s %s",display,vt);
+		//     command      argv[0]     argv[1]  argv[2] end of args
+		execl("/usr/bin/X","/usr/bin/X",display, vt,     NULL       );
+		fprintf(stderr,"failed to start x\n"); //execl doesnt return unless error
+		exit(1);
+	}
+	sleep(2); //let x server start
+}
+static void end_x(){
+	int result = waitpid(x_pid,NULL,0);
+	if (result < 0) perror("waitpid");
 }

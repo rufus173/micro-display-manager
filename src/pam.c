@@ -9,31 +9,9 @@
 
 static pam_handle_t *default_pam_handle;
 
-static void init_env(char *username, pam_handle_t *pam_handle);
-static void set_env(char *name, char *val, pam_handle_t *pam_handle);
 int pam_conversation_func(int num_msg, const struct pam_message **msg, struct pam_response **resp,void *appdata_ptr); //callback function
-int login(char *username, char *password,pam_handle_t **pam_handle);
-int logout(pam_handle_t *pam_handle);
-static void set_env(char *name, char *val, pam_handle_t *pam_handle){
-	//                                                  '\0' '='
-	size_t env_string_size = strlen(name) + strlen(val) +1  +1;
-	char *env_string = malloc(env_string_size);
-	snprintf(env_string,env_string_size,"%s=%s", name, val);
-	int result = pam_putenv(pam_handle, env_string);
-	if (result != PAM_SUCCESS){
-		PAM_ERR("pam_putenv",pam_handle,result);
-		return;
-	}
-	free(env_string);
-}
-static void init_env(char *username,pam_handle_t *pam_handle){
-	//get passwd struct
-	struct passwd *password = getpwnam(username);
-	set_env("HOME",password->pw_dir,pam_handle);
-	set_env("user",password->pw_name,pam_handle);
-	set_env("PWD",password->pw_dir,pam_handle);
-	set_env("SHELL",password->pw_shell,pam_handle);
-}
+int pam_login(char *username, char *password,pam_handle_t **pam_handle);
+int pam_logout(pam_handle_t *pam_handle);
 int pam_conversation_func(int num_msg, const struct pam_message **msg, struct pam_response **response,void *appdata_ptr){
 	int pam_result = PAM_SUCCESS;
 	//appdata_ptr = conversation_data from previous struct
@@ -75,7 +53,7 @@ int pam_conversation_func(int num_msg, const struct pam_message **msg, struct pa
 
 	return PAM_SUCCESS;
 }
-int login(char *username, char *password,pam_handle_t **pam_handle){
+int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 	int return_status = -1; //returned when there is an error
 	int pam_result; //needs to be passed to pam_end at the end
 	int result = 0; //for other glibc functions
@@ -118,8 +96,6 @@ int login(char *username, char *password,pam_handle_t **pam_handle){
 		goto end;
 	}
 
-	init_env(username,*pam_handle); //set up environmental variables
-
 	//-----successfull exit-------
 	return 0;
 	//---only comes here on failure---
@@ -130,7 +106,7 @@ int login(char *username, char *password,pam_handle_t **pam_handle){
 	}
 	return return_status;
 }
-int logout(pam_handle_t *pam_handle){
+int pam_logout(pam_handle_t *pam_handle){
 	int pam_result = PAM_SUCCESS; //placeholder so pam_end doesnt bug
 	int return_status = 0;
 
