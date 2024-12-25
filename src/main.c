@@ -6,6 +6,7 @@
 #include "graphical-interface.h"
 #include <pwd.h>
 #include <grp.h>
+#include "tui.h"
 static void init_env(char *username);
 static int set_ids(char *user);
 int main(int argc, char **argv){
@@ -13,10 +14,20 @@ int main(int argc, char **argv){
 		fprintf(stderr,"Must be run as root.\n");
 		return -1;
 	}
+	
+	//start the tui
+	int result = tui_init("/dev/tty1");
+	if (result < 0){
+		fprintf(stderr,"tui would not start.\n");
+		return 1;
+	}
+	tui_end();
+
 	if (argc < 3){
 		fprintf(stderr,"not enough args. expected username and password\n");
 		return 1;
 	}
+
 	char *user = argv[1];
 	char *password = argv[2];
 
@@ -39,7 +50,13 @@ int main(int argc, char **argv){
 		}
 		if (child_pid == 0){
 			//==== child process ====
-			int result = set_ids(user);
+			//create a new session
+			int result = setsid();
+			if (result < 0){
+				perror("setsid");
+				exit(1);
+			}
+			result = set_ids(user);
 			if (result < 0){
 				fprintf(stderr,"Could not change user ids.\n");
 				exit(1);
