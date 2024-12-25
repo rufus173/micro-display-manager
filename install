@@ -1,0 +1,3 @@
+#!/bin/sh
+install micro-display-manager /usr/bin
+install micro-display-manager /etc/systemd/system
