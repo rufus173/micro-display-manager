@@ -15,27 +15,29 @@ int main(int argc, char **argv){
 		return -1;
 	}
 	
-	//start the tui
-	int result = tui_init();
-	if (result < 0){
-		fprintf(stderr,"tui would not start.\n");
-		return 1;
-	}
-	tui_end();
-
-	if (argc < 3){
-		fprintf(stderr,"not enough args. expected username and password\n");
-		return 1;
-	}
-
-	char *user = argv[1];
-	char *password = argv[2];
 
 	//-------- mainloop to allow more then one login and logout ---------
 	for (;;){
+		//------------ get username and password -------------
+		//start the tui
+		int result = tui_init();
+		if (result < 0){
+			fprintf(stderr,"tui would not start.\n");
+			return 1;
+		}
+
+
+		char *user = NULL;
+		char *password = NULL;
+		result = tui_get_user_and_password(&user,&password);//allocates strings for us
+
+		//clean up after the tui
+		free(user); free(password);
+		tui_end();
+
 		//------------ check credentials with pam ------------
 		printf("verifying credentials\n");
-		int result = pam_login(user,password,NULL); //switch to desired user
+		result = pam_login(user,password,NULL); //switch to desired user
 		if (result < 0){
 			fprintf(stderr,"could not log in\n");
 			goto logout;
