@@ -64,7 +64,7 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 
 
 	//start pam
-	pam_result = pam_start("other",NULL,&conversation,pam_handle);
+	pam_result = pam_start("login",NULL,&conversation,pam_handle);
 	if (pam_result != PAM_SUCCESS){
 		PAM_ERR("pam_start",*pam_handle,pam_result);
 		goto end;
