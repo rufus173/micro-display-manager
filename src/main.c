@@ -34,7 +34,7 @@ int main(int argc, char **argv){
 
 		//clean up after the tui
 		tui_end();
-		printf("user: %s\npassword: %s\nstart command: %s\n",user,password,start_command);
+		printf("user: [%s]\npassword: [%s]\nstart command: [%s]\n",user,password,start_command);
 
 		//------------ check credentials with pam ------------
 		printf("verifying credentials\n");
@@ -65,7 +65,7 @@ int main(int argc, char **argv){
 				exit(1);
 			}
 			init_env(user);
-			execl("/bin/bash","/bin/bash",NULL);
+			execl("/bin/sh","bin/sh","-c",start_command,NULL);
 			exit(0);
 		}
 		//----------- wait for fork to exit -------------
@@ -80,7 +80,6 @@ int main(int argc, char **argv){
 		logout:
 		if (result >= 0) pam_logout(NULL); //dont logout if login failed
 		free(user); free(password); free(start_command);
-		break;
 	}
 	//---------------- exit cleanup ------------	
 }
