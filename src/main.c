@@ -16,7 +16,7 @@ int main(int argc, char **argv){
 	}
 	
 	//start the tui
-	int result = tui_init("/dev/tty1");
+	int result = tui_init();
 	if (result < 0){
 		fprintf(stderr,"tui would not start.\n");
 		return 1;
