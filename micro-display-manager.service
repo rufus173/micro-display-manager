@@ -1,9 +1,17 @@
 [Unit]
-Description=micro-display-manager
+Description=micro display manager
 After=systemd-user-sessions.service
+After=getty@tty1.service
+Conflicts=getty@tty1.service
 
 [Service]
+Type=idle
 ExecStart=/usr/bin/micro-display-manager
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
 
 [Install]
 Alias=display-manager.service
