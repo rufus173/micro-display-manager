@@ -16,6 +16,8 @@
 #define MAX_LABEL_WIDTH 16
 
 void print_centred(WINDOW *window,int y,int x,int max_length,char *text);
+int get_start_commands(char ***all_start_commands);
+void free_start_commands(char **all_start_commands,int max_start_commands);
 
 static int tty_fd;
 int tui_init(){
@@ -23,6 +25,7 @@ int tui_init(){
 	initscr();
 	noecho();
 	cbreak();
+	curs_set(0);
 	keypad(stdscr, TRUE);
 	refresh();
 	return 0;
@@ -31,7 +34,7 @@ int tui_end(){
 	endwin();
 	return 0;
 }
-int tui_get_user_and_password(char **user, char **password){
+int tui_get_user_and_password(char **user, char **password, char **start_command){
 	//======== prep ==========
 	//get required info
 	char **all_users = NULL;
@@ -46,6 +49,10 @@ int tui_get_user_and_password(char **user, char **password){
 		max_username_len = MAX(max_username_len,strlen(pw->pw_name));
 	}
 	endpwent();
+	
+	char **all_start_commands;
+	int max_start_commands = get_start_commands(&all_start_commands);
+	
 	//ui
 	int window_width = 2;
 	int window_height = 5;
@@ -66,10 +73,15 @@ int tui_get_user_and_password(char **user, char **password){
 		werase(login_window);
 		clear();
 		refresh();
+		
+		//controls
+		printw("left and right arrows: change user\nup and down arrows: change start command");
+
 		//regenerate required information to render
 		window_width = 2;
 		window_width = MAX(window_width,max_username_len+4+MAX_LABEL_WIDTH); //4 for padding and MAX_LABEL_WIDTH for labels
 		window_width = MAX(window_width,entered_password_size+3+MAX_LABEL_WIDTH);
+		window_width = MAX(window_width,strlen(all_start_commands[selected_start_command])+4+MAX_LABEL_WIDTH);
 		window_width = CLAMP_MAX(window_width,COLS);
 		window_x = (COLS/2)-(window_width/2);
 		
@@ -87,6 +99,9 @@ int tui_get_user_and_password(char **user, char **password){
 		for (int i = 0; i < entered_password_size-1; i++) mvwprintw(login_window,2,MAX_LABEL_WIDTH+2+i,"*");
 		//start command label
 		mvwprintw(login_window,3,2,"Start command |");
+		//start command
+		print_centred(login_window,3,2+MAX_LABEL_WIDTH,window_width-4-MAX_LABEL_WIDTH,all_start_commands[selected_start_command]);
+
 		
 
 
@@ -104,12 +119,26 @@ int tui_get_user_and_password(char **user, char **password){
 				selected_user++;
 				if (selected_user > user_count-1) selected_user = 0;
 				break;
+			case KEY_UP:
+				selected_start_command++;
+				if (selected_start_command >= max_start_commands) selected_start_command = 0;
+				break;
+			case KEY_DOWN:
+				selected_start_command--;
+				if (selected_start_command < 0) selected_start_command = max_start_commands-1;
+				break;
 			case KEY_BACKSPACE:
 				entered_password_size--;
 				if (entered_password_size < 1) entered_password_size = 1;
 				entered_password[entered_password_size-1] = '\0';
 				break;
+			case '\n':
+				*user = strdup(all_users[selected_user]);
+				*password = strdup(entered_password);
+				*start_command = strdup(all_start_commands[selected_start_command]);
+				return 0;
 			default:
+				if (input < 32 || input > 126) break;
 				entered_password_size++;
 				entered_password = realloc(entered_password,entered_password_size);
 				entered_password[entered_password_size-2] = (char)input;
@@ -119,6 +148,7 @@ int tui_get_user_and_password(char **user, char **password){
 	//====== cleanup =======
 	for (int i = 0; i < user_count; i++) free(all_users[user_count]);
 	free(all_users);
+	free_start_commands(all_start_commands,max_start_commands);
 	return 0;
 }
 void print_centred(WINDOW *window,int y,int x,int max_length,char *text){
@@ -134,4 +164,18 @@ void print_centred(WINDOW *window,int y,int x,int max_length,char *text){
 
 	//actualy print
 	mvwprintw(window,y,centred_x,"%s",text);
+}
+int get_start_commands(char ***all_start_commands){
+	int max_start_commands = 3;
+	char **start_commands = malloc(sizeof(char *)*max_start_commands);
+	start_commands[0] = strdup("/bin/bash");
+	start_commands[1] = strdup("startx");
+	start_commands[2] = strdup("startplasma-wayland");
+
+	*all_start_commands = start_commands;
+	return max_start_commands;
+}
+void free_start_commands(char **all_start_commands,int max_start_commands){
+	for (int i = 0; i < max_start_commands; i++) free(all_start_commands[i]);
+	free(all_start_commands);
 }

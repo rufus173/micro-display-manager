@@ -29,11 +29,12 @@ int main(int argc, char **argv){
 
 		char *user = NULL;
 		char *password = NULL;
-		result = tui_get_user_and_password(&user,&password);//allocates strings for us
+		char *start_command = NULL;
+		result = tui_get_user_and_password(&user,&password,&start_command);//allocates strings for us
 
 		//clean up after the tui
-		free(user); free(password);
 		tui_end();
+		printf("user: %s\npassword: %s\nstart command: %s\n",user,password,start_command);
 
 		//------------ check credentials with pam ------------
 		printf("verifying credentials\n");
@@ -77,7 +78,8 @@ int main(int argc, char **argv){
 		int child_status = WEXITSTATUS(child_return); //the return status of the fork
 		//------------ log user out when the fork exits ---------
 		logout:
-		pam_logout(NULL); //dont care about result
+		if (result >= 0) pam_logout(NULL); //dont logout if login failed
+		free(user); free(password); free(start_command);
 		break;
 	}
 	//---------------- exit cleanup ------------	
