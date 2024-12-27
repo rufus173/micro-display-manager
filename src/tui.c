@@ -168,8 +168,8 @@ void print_centred(WINDOW *window,int y,int x,int max_length,char *text){
 int get_start_commands(char ***all_start_commands){
 	int max_start_commands = 3;
 	char **start_commands = malloc(sizeof(char *)*max_start_commands);
-	start_commands[0] = strdup("/bin/bash");
-	start_commands[1] = strdup("startx");
+	start_commands[0] = strdup("startx");
+	start_commands[1] = strdup("/bin/bash");
 	start_commands[2] = strdup("startplasma-wayland");
 
 	*all_start_commands = start_commands;

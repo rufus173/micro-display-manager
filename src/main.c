@@ -65,7 +65,7 @@ int main(int argc, char **argv){
 				exit(1);
 			}
 			init_env(user);
-			execl("/bin/sh","bin/sh","-c",start_command,NULL);
+			execl("/bin/sh","bin/sh","-cl",start_command,NULL);
 			exit(0);
 		}
 		//----------- wait for fork to exit -------------
