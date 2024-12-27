@@ -64,9 +64,16 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 
 
 	//start pam
-	pam_result = pam_start("login",NULL,&conversation,pam_handle);
+	pam_result = pam_start("micro-display-manager",NULL,&conversation,pam_handle);
 	if (pam_result != PAM_SUCCESS){
 		PAM_ERR("pam_start",*pam_handle,pam_result);
+		goto end;
+	}
+
+	//set PAM_TTY
+	pam_result = pam_set_item(*pam_handle,PAM_TTY,"/dev/tty0");
+	if (pam_result != PAM_SUCCESS){
+		PAM_ERR("pam_result",*pam_handle,pam_result);
 		goto end;
 	}
 
@@ -96,6 +103,12 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 		goto end;
 	}
 
+	char **pam_env_variables = pam_getenvlist(*pam_handle);
+	for (int i = 0; pam_env_variables[i] != NULL; i++){
+		printf("%s\n",pam_env_variables[i]);
+		free(pam_env_variables[i]);
+	}
+	free(pam_env_variables);
 	//-----successfull exit-------
 	return 0;
 	//---only comes here on failure---

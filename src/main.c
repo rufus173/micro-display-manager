@@ -65,7 +65,9 @@ int main(int argc, char **argv){
 				exit(1);
 			}
 			init_env(user);
-			execl("/bin/sh","bin/sh","-cl",start_command,NULL);
+			execl("/bin/bash","bash","-i",NULL);
+			execl("/bin/sh","sh","-c","/usr/lib/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland",NULL);
+			sleep(10);
 			exit(0);
 		}
 		//----------- wait for fork to exit -------------
@@ -80,6 +82,7 @@ int main(int argc, char **argv){
 		logout:
 		if (result >= 0) pam_logout(NULL); //dont logout if login failed
 		free(user); free(password); free(start_command);
+		break;
 		//sleep(5);
 	}
 	//---------------- exit cleanup ------------	
@@ -128,4 +131,7 @@ static void init_env(char *username){
 	setenv("LOGNAME",password->pw_name,1);
 	setenv("PWD",password->pw_dir,1);
 	setenv("SHELL",password->pw_shell,1);
+	setenv("XDG_SESSION_TYPE","tty",1);
+	setenv("XDG_SEAT","seat0",1);
+	setenv("LANG","en_US.UTF-8",1);
 }
