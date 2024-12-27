@@ -1,3 +1,4 @@
 #!/bin/sh
 install micro-display-manager /usr/bin
 install micro-display-manager.service /etc/systemd/system
+install pam.d/micro-display-manager /etc/pam.d
