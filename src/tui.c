@@ -135,7 +135,7 @@ int tui_get_user_and_password(char **user, char **password, char **start_command
 			case '\n':
 				*user = strdup(all_users[selected_user]);
 				*password = strdup(entered_password);
-				*start_command = strdup(get_desktop_name(selected_start_command));
+				*start_command = strdup(get_desktop_start_command(selected_start_command));
 				return 0;
 			default:
 				if (input < 32 || input > 126) break;

@@ -78,8 +78,7 @@ int main(int argc, char **argv){
 				exit(1);
 			}
 			init_env(user);
-			execl("/bin/bash","bash","-i",NULL);
-			execl("/bin/sh","sh","-c","/usr/lib/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland",NULL);
+			execl("/bin/sh","sh","-c",start_command,NULL);
 		}
 		//----------- wait for fork to exit -------------
 		int child_return;
