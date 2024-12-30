@@ -54,7 +54,9 @@ static char *config_file_read_attribute(FILE *file,char *attribute){
 		snprintf(search_term,search_term_size,"%s=",attribute);
 		if (strncmp(line,search_term,strlen(search_term)) == 0){
 			free(search_term);
-			return strchr(line,'=')+1;
+			char *value = strdup(strchr(line,'=')+1);
+			free(line);
+			return value;
 		}
 		free(search_term);
 		free(line);
