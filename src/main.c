@@ -7,6 +7,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include "tui.h"
+static void set_xdg_env();
 static void init_env(char *username);
 static int set_ids(char *user);
 int main(int argc, char **argv){
@@ -38,6 +39,8 @@ int main(int argc, char **argv){
 
 		//------------ check credentials with pam ------------
 		printf("verifying credentials\n");
+		//we need pam_systemd.so to trigger to set up a new session for us
+		set_xdg_env();
 		result = pam_login(user,password,NULL); //switch to desired user
 		if (result < 0){
 			fprintf(stderr,"could not log in\n");
@@ -131,7 +134,11 @@ static void init_env(char *username){
 	setenv("LOGNAME",password->pw_name,1);
 	setenv("PWD",password->pw_dir,1);
 	setenv("SHELL",password->pw_shell,1);
+	//setenv("LANG","en_US.UTF-8",1);
+}
+static void set_xdg_env(){
 	setenv("XDG_SESSION_TYPE","tty",1);
 	setenv("XDG_SEAT","seat0",1);
-	setenv("LANG","en_US.UTF-8",1);
+	setenv("XDG_SESSION_CLASS","user",1);
+	setenv("XDG_VTNR","1",1);
 }
