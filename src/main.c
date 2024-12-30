@@ -7,15 +7,23 @@
 #include <pwd.h>
 #include <grp.h>
 #include "tui.h"
+#include "start_commands.h"
 static void set_xdg_env();
 static void init_env(char *username);
 static int set_ids(char *user);
+
 int main(int argc, char **argv){
+	if (load_desktops() < 0){
+		fprintf(stderr,"could not load available desktops\n");
+		return 1;
+	}
 	if (getuid() != 0){
 		fprintf(stderr,"Must be run as root.\n");
 		return -1;
 	}
-	
+
+	//ignore sigint to stop CTRL-c killing the display manager
+	signal(SIGINT,SIG_IGN);
 
 	//-------- mainloop to allow more then one login and logout ---------
 	for (;;){
@@ -70,8 +78,6 @@ int main(int argc, char **argv){
 			init_env(user);
 			execl("/bin/bash","bash","-i",NULL);
 			execl("/bin/sh","sh","-c","/usr/lib/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland",NULL);
-			sleep(10);
-			exit(0);
 		}
 		//----------- wait for fork to exit -------------
 		int child_return;
@@ -89,6 +95,7 @@ int main(int argc, char **argv){
 		//sleep(5);
 	}
 	//---------------- exit cleanup ------------	
+	free_desktops();
 }
 static int set_ids(char *user){
 	struct passwd *pw = getpwnam(user);

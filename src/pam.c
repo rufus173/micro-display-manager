@@ -103,9 +103,16 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 		goto end;
 	}
 
+	//set the list of env variables the pam modules give us to set
 	char **pam_env_variables = pam_getenvlist(*pam_handle);
 	for (int i = 0; pam_env_variables[i] != NULL; i++){
 		printf("%s\n",pam_env_variables[i]);
+		//split string
+		char *var = pam_env_variables[i];
+		char *value = strchr(pam_env_variables[i],'=');
+		value[0] = '\0';
+		value++;
+		setenv(var,value,0);
 		free(pam_env_variables[i]);
 	}
 	free(pam_env_variables);
