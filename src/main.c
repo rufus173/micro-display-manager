@@ -13,14 +13,16 @@ static void init_env(char *username);
 static int set_ids(char *user);
 
 int main(int argc, char **argv){
-	if (load_desktops() < 0){
-		fprintf(stderr,"could not load available desktops\n");
-		return 1;
-	}
 	if (getuid() != 0){
 		fprintf(stderr,"Must be run as root.\n");
 		return -1;
 	}
+
+	if (load_desktops() < 0){
+		fprintf(stderr,"could not load available desktops\n");
+		return 1;
+	}
+	//return 0;
 
 	//ignore sigint to stop CTRL-c killing the display manager
 	signal(SIGINT,SIG_IGN);

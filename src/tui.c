@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <linux/vt.h>
 #include <pwd.h>
+#include "start_commands.h"
 
 #define MAX(n1,n2) ((n1 > n2) ? n1 : n2 )
 #define CLAMP_MIN(n,min) ((n > min) ? n : min)
@@ -50,8 +51,7 @@ int tui_get_user_and_password(char **user, char **password, char **start_command
 	}
 	endpwent();
 	
-	char **all_start_commands;
-	int max_start_commands = get_start_commands(&all_start_commands);
+	int max_start_commands = get_desktop_count(); //bad variable naming (sorry)
 	
 	//ui
 	int window_width = 2;
@@ -81,7 +81,7 @@ int tui_get_user_and_password(char **user, char **password, char **start_command
 		window_width = 2;
 		window_width = MAX(window_width,max_username_len+4+MAX_LABEL_WIDTH); //4 for padding and MAX_LABEL_WIDTH for labels
 		window_width = MAX(window_width,entered_password_size+3+MAX_LABEL_WIDTH);
-		window_width = MAX(window_width,strlen(all_start_commands[selected_start_command])+4+MAX_LABEL_WIDTH);
+		window_width = MAX(window_width,strlen(get_desktop_name(selected_start_command))+4+MAX_LABEL_WIDTH);
 		window_width = CLAMP_MAX(window_width,COLS);
 		window_x = (COLS/2)-(window_width/2);
 		
@@ -100,7 +100,7 @@ int tui_get_user_and_password(char **user, char **password, char **start_command
 		//start command label
 		mvwprintw(login_window,3,2,"Start command |");
 		//start command
-		print_centred(login_window,3,2+MAX_LABEL_WIDTH,window_width-4-MAX_LABEL_WIDTH,all_start_commands[selected_start_command]);
+		print_centred(login_window,3,2+MAX_LABEL_WIDTH,window_width-4-MAX_LABEL_WIDTH,get_desktop_name(selected_start_command));
 
 		
 
@@ -135,7 +135,7 @@ int tui_get_user_and_password(char **user, char **password, char **start_command
 			case '\n':
 				*user = strdup(all_users[selected_user]);
 				*password = strdup(entered_password);
-				*start_command = strdup(all_start_commands[selected_start_command]);
+				*start_command = strdup(get_desktop_name(selected_start_command));
 				return 0;
 			default:
 				if (input < 32 || input > 126) break;
@@ -148,7 +148,6 @@ int tui_get_user_and_password(char **user, char **password, char **start_command
 	//====== cleanup =======
 	for (int i = 0; i < user_count; i++) free(all_users[user_count]);
 	free(all_users);
-	free_start_commands(all_start_commands,max_start_commands);
 	return 0;
 }
 void print_centred(WINDOW *window,int y,int x,int max_length,char *text){
@@ -164,18 +163,4 @@ void print_centred(WINDOW *window,int y,int x,int max_length,char *text){
 
 	//actualy print
 	mvwprintw(window,y,centred_x,"%s",text);
-}
-int get_start_commands(char ***all_start_commands){
-	int max_start_commands = 3;
-	char **start_commands = malloc(sizeof(char *)*max_start_commands);
-	start_commands[0] = strdup("startx");
-	start_commands[1] = strdup("/bin/bash");
-	start_commands[2] = strdup("startplasma-wayland");
-
-	*all_start_commands = start_commands;
-	return max_start_commands;
-}
-void free_start_commands(char **all_start_commands,int max_start_commands){
-	for (int i = 0; i < max_start_commands; i++) free(all_start_commands[i]);
-	free(all_start_commands);
 }
