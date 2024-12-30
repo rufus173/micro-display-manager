@@ -92,7 +92,7 @@ int main(int argc, char **argv){
 		logout:
 		if (result >= 0) pam_logout(NULL); //dont logout if login failed
 		free(user); free(password); free(start_command);
-		break;
+		//break;
 		//sleep(5);
 	}
 	//---------------- exit cleanup ------------	
