@@ -35,7 +35,7 @@ int tui_end(){
 	endwin();
 	return 0;
 }
-int tui_get_user_and_password(char **user, char **password, char **start_command){
+int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 	//======== prep ==========
 	//get required info
 	char **all_users = NULL;
@@ -135,7 +135,7 @@ int tui_get_user_and_password(char **user, char **password, char **start_command
 			case '\n':
 				*user = strdup(all_users[selected_user]);
 				*password = strdup(entered_password);
-				*start_command = strdup(get_desktop_start_command(selected_start_command));
+				*desktop_index = selected_start_command;
 				return 0;
 			default:
 				if (input < 32 || input > 126) break;

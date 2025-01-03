@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
+#include <libgen.h>
+#include <pwd.h>
 
 struct desktop {
 	char *display_name;
@@ -132,4 +134,17 @@ char *get_desktop_name(int index){
 }
 char *get_desktop_start_command(int index){
 	return available_desktops[index]->start_command;
+}
+char *get_desktop_compositor(int index){
+	return available_desktops[index]->compositor;
+}
+int start_desktop(int desktop_index,char *user){
+	if (strcmp(get_desktop_compositor(desktop_index),"wayland") == 0){
+		//we just run the start command, and nothing else
+		char *user_shell = getpwnam(user)->pw_shell;
+		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index),NULL);
+	}
+	fprintf(stderr,"unrecognised desktop compositor.\n");
+	//this function should not return unless an error occured
+	return -1;
 }

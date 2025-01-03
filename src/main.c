@@ -40,8 +40,8 @@ int main(int argc, char **argv){
 
 		char *user = NULL;
 		char *password = NULL;
-		char *start_command = NULL;
-		result = tui_get_user_and_password(&user,&password,&start_command);//allocates strings for us
+		int desktop_index;
+		result = tui_get_user_and_password(&user,&password,&desktop_index);//allocates strings for us
 
 		//clean up after the tui
 		tui_end();
@@ -78,7 +78,9 @@ int main(int argc, char **argv){
 				exit(1);
 			}
 			init_env(user);
-			execl("/bin/sh","sh","-c",start_command,NULL);
+			start_desktop(desktop_index,user);
+			//start_desktop only returns on failure
+			fprintf(stderr,"Could not start desktop.\n");
 		}
 		//----------- wait for fork to exit -------------
 		int child_return;
@@ -91,7 +93,7 @@ int main(int argc, char **argv){
 		//------------ log user out when the fork exits ---------
 		logout:
 		if (result >= 0) pam_logout(NULL); //dont logout if login failed
-		free(user); free(password); free(start_command);
+		free(user); free(password);
 		//break;
 		//sleep(5);
 	}
