@@ -139,12 +139,19 @@ char *get_desktop_compositor(int index){
 	return available_desktops[index]->compositor;
 }
 int start_desktop(int desktop_index,char *user){
+	//=================== wayland sessions ================
 	if (strcmp(get_desktop_compositor(desktop_index),"wayland") == 0){
 		//we just run the start command, and nothing else
 		char *user_shell = getpwnam(user)->pw_shell;
 		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index),NULL);
 	}
-	fprintf(stderr,"unrecognised desktop compositor.\n");
+	//=================== X sessions =====================
+	else if (strcmp(get_desktop_compositor(desktop_index),"X") == 0){
+		//start x server
+		//run desktop session start command
+	}
+
 	//this function should not return unless an error occured
+	fprintf(stderr,"unrecognised desktop compositor.\n");
 	return -1;
 }
