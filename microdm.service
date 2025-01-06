@@ -6,7 +6,7 @@ Conflicts=getty@tty1.service
 
 [Service]
 Type=idle
-ExecStart=/usr/bin/micro-display-manager
+ExecStart=/usr/bin/microdm
 StandardInput=tty
 StandardOutput=tty
 TTYPath=/dev/tty1
