@@ -16,5 +16,5 @@ start_commands.o : src/start_commands.c
 	$(CC) $(CFLAGS) -c src/start_commands.c
 clean : 
 	rm *.o
-install : micro-display-manager micro-display-manager.service
+install : microdm microdm.service
 	./install
