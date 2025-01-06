@@ -8,6 +8,7 @@ char *get_desktop_start_command(int index);
 int start_desktop(int index, char *user);
 int set_last_selected_desktop_index(int index);
 int get_last_selected_desktop_index();
+int wait_display_server();
 struct desktop {
 	char *display_name;
 	char *start_command;

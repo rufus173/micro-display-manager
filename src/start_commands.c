@@ -7,6 +7,7 @@
 #include <libgen.h>
 #include <pwd.h>
 #include <stdint.h>
+#include <sys/wait.h>
 
 #define DESKTOP_CACHE_FILE "/var/cache/microdm/last_desktop"
 
@@ -17,6 +18,7 @@ struct desktop {
 };
 
 static int desktop_count = 0;
+static pid_t display_server_pid = 0;
 static struct desktop **available_desktops = NULL;
 
 static char *file_get_line(FILE *file){
@@ -169,20 +171,33 @@ int set_last_selected_desktop_index(int index){
 	return 0;
 }
 int start_desktop(int desktop_index,char *user){
+	char *user_shell = getpwnam(user)->pw_shell;
 	//=================== wayland sessions ================
 	if (strcmp(get_desktop_compositor(desktop_index),"wayland") == 0){
 		//we just run the start command, and nothing else
-		char *user_shell = getpwnam(user)->pw_shell;
 		printf("%s %s %s %s\n",user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index));
 		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index),NULL);
 	}
 	//=================== X sessions =====================
 	else if (strcmp(get_desktop_compositor(desktop_index),"X") == 0){
 		//start x server
+		display_server_pid = fork();
+		if (display_server_pid == 0){ //child
+			execl("/usr/bin/X","X",NULL);
+		}
+		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index),NULL);
 		//run desktop session start command
 	}
 
 	//this function should not return unless an error occured
 	fprintf(stderr,"unrecognised desktop compositor.\n");
 	return -1;
+}
+int wait_display_server(){
+	int result = waitpid(display_server_pid,NULL,0);
+	if (result < 0){
+		perror("waitpid");
+		return -1;
+	}
+	return 0;
 }

@@ -91,6 +91,8 @@ int main(int argc, char **argv){
 			return -1;
 		}
 		int child_status = WEXITSTATUS(child_return); //the return status of the fork
+		//also wait for x server if it was spawned
+		wait_display_server();
 		//------------ log user out when the fork exits ---------
 		logout:
 		if (result >= 0) pam_logout(NULL); //dont logout if login failed
