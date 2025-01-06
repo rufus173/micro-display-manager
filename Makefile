@@ -2,7 +2,7 @@ LFLAGS= -lpam -lpam_misc `pkg-config --libs gtk4` -lncursesw
 CFLAGS=-g `pkg-config --cflags gtk4`
 CC=gcc
 
-micro-display-manager : main.o pam.o graphical-interface.o tui.o start_commands.o
+microdm : main.o pam.o graphical-interface.o tui.o start_commands.o
 	$(CC) $^ -o $@ $(LFLAGS)
 main.o : src/main.c src/pam.h src/start_commands.h
 	$(CC) $(CFLAGS) -c src/main.c

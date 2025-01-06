@@ -64,7 +64,7 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 
 
 	//start pam
-	pam_result = pam_start("micro-display-manager",NULL,&conversation,pam_handle);
+	pam_result = pam_start("microdm",NULL,&conversation,pam_handle); //use our custom config file
 	if (pam_result != PAM_SUCCESS){
 		PAM_ERR("pam_start",*pam_handle,pam_result);
 		goto end;
