@@ -61,7 +61,7 @@ int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 	WINDOW *login_window = newwin(window_height,window_width,window_y,window_x);
 	//user data
 	int selected_user = 0;
-	int selected_start_command = 0;
+	int selected_start_command = get_last_selected_desktop_index();
 	int entered_password_size = 1;
 	char *entered_password = malloc(1);
 	entered_password[0] = '\0';
@@ -136,6 +136,7 @@ int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 				*user = strdup(all_users[selected_user]);
 				*password = strdup(entered_password);
 				*desktop_index = selected_start_command;
+				set_last_selected_desktop_index(selected_start_command);
 				return 0;
 			default:
 				if (input < 32 || input > 126) break;

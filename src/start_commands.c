@@ -6,6 +6,9 @@
 #include <string.h>
 #include <libgen.h>
 #include <pwd.h>
+#include <stdint.h>
+
+#define DESKTOP_CACHE_FILE "/var/cache/microdm/last_desktop"
 
 struct desktop {
 	char *display_name;
@@ -137,6 +140,33 @@ char *get_desktop_start_command(int index){
 }
 char *get_desktop_compositor(int index){
 	return available_desktops[index]->compositor;
+}
+int get_last_selected_desktop_index(){
+	FILE *last_desktop_file = fopen(DESKTOP_CACHE_FILE,"rb");
+	if  (last_desktop_file == NULL){
+		fprintf(stderr,"couldnt open cache.\n");
+		return 0; //default to 0
+	}
+	uint32_t last_desktop_index = 0;
+	int result = fread(&last_desktop_index,sizeof(uint32_t),1,last_desktop_file);
+	if (result < 1){ //error if we couldnt read the whole int or just couldnt read
+		fprintf(stderr,"couldnt get last desktop used");
+		last_desktop_index = 0;
+	}
+	fclose(last_desktop_file);
+	return last_desktop_index;
+}
+int set_last_selected_desktop_index(int index){
+	FILE *cache = fopen(DESKTOP_CACHE_FILE,"wb");
+	if  (cache == NULL){
+		fprintf(stderr,"couldnt open cache.\n");
+		fclose(cache);
+		return -1;
+	}
+	uint32_t index_buffer = index;
+	fwrite(&index_buffer,sizeof(uint32_t),1,cache);
+	fclose(cache);
+	return 0;
 }
 int start_desktop(int desktop_index,char *user){
 	//=================== wayland sessions ================
