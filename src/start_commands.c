@@ -143,6 +143,7 @@ int start_desktop(int desktop_index,char *user){
 	if (strcmp(get_desktop_compositor(desktop_index),"wayland") == 0){
 		//we just run the start command, and nothing else
 		char *user_shell = getpwnam(user)->pw_shell;
+		printf("%s %s %s %s\n",user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index));
 		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index),NULL);
 	}
 	//=================== X sessions =====================

@@ -81,6 +81,7 @@ int main(int argc, char **argv){
 			start_desktop(desktop_index,user);
 			//start_desktop only returns on failure
 			fprintf(stderr,"Could not start desktop.\n");
+			exit(1);
 		}
 		//----------- wait for fork to exit -------------
 		int child_return;
