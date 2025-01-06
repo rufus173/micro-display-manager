@@ -3,3 +3,4 @@ install microdm /usr/bin
 install microdm.service /etc/systemd/system
 install pam.d/microdm /etc/pam.d
 systemctl enable microdm.service
+mkdir -p /var/cache/microdm
