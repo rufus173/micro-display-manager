@@ -171,6 +171,8 @@ int set_last_selected_desktop_index(int index){
 	return 0;
 }
 int start_desktop(int desktop_index,char *user){
+	//switch to users home directory
+	chdir(getpwnam(user)->pw_dir);
 	char *user_shell = getpwnam(user)->pw_shell;
 	//=================== wayland sessions ================
 	if (strcmp(get_desktop_compositor(desktop_index),"wayland") == 0){
