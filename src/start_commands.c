@@ -114,11 +114,8 @@ static int load_from_dir(char *dir,char *compositor){
 }
 
 int load_desktops(){
-	//load xsessions form /usr/share/xsessions
-	int result = load_from_dir("/usr/share/xsessions","X");
-	if (result < 0) return -1;
 	//load wayland sesisons
-	result = load_from_dir("/usr/share/wayland-sessions","wayland");
+	int result = load_from_dir("/usr/share/wayland-sessions","wayland");
 	if (result < 0) return -1;
 
 }
@@ -180,17 +177,6 @@ int start_desktop(int desktop_index,char *user){
 		printf("%s %s %s %s\n",user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index));
 		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index),NULL);
 	}
-	//=================== X sessions =====================
-	else if (strcmp(get_desktop_compositor(desktop_index),"X") == 0){
-		//start x server
-		display_server_pid = fork();
-		if (display_server_pid == 0){ //child
-			execl("/usr/bin/X","X",NULL);
-		}
-		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index),NULL);
-		//run desktop session start command
-	}
-
 	//this function should not return unless an error occured
 	fprintf(stderr,"unrecognised desktop compositor.\n");
 	return -1;
