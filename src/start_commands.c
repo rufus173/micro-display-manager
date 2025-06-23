@@ -2,12 +2,14 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/types.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <libgen.h>
 #include <pwd.h>
 #include <stdint.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 #define DESKTOP_CACHE_FILE "/var/cache/microdm/last_desktop"
 
@@ -186,6 +188,26 @@ int wait_display_server(){
 	if (result < 0){
 		perror("waitpid");
 		return -1;
+	}
+	return 0;
+}
+int mkdir_p(const char *path){
+	int result = mkdir(path,0777);
+	if (result < 0){
+		if (errno == ENOENT){
+			char *base_path = strdup(path);
+			if (strrchr(base_path,'/') == NULL) return -1;
+			*strrchr(base_path,'/') = '\0';
+			int result = mkdir_p(base_path);
+			free(base_path);
+			if (result == 0){
+				return mkdir_p(path);
+			}else{
+				return result;
+			}
+		}else{
+			return -1;
+		}
 	}
 	return 0;
 }
