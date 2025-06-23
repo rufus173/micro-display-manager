@@ -9,6 +9,7 @@ int start_desktop(int index, char *user);
 int set_last_selected_desktop_index(int index);
 int get_last_selected_desktop_index();
 int wait_display_server();
+int mkdir_p(const char *path);
 struct desktop {
 	char *display_name;
 	char *start_command;

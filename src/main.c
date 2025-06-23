@@ -8,6 +8,8 @@
 #include <grp.h>
 #include "tui.h"
 #include "start_commands.h"
+#include <security/pam_appl.h>
+#include <security/pam_misc.h>
 static void set_xdg_env();
 static void init_env(char *username);
 static int set_ids(char *user);
@@ -25,83 +27,65 @@ int main(int argc, char **argv){
 	//return 0;
 
 	//ignore sigint to stop CTRL-c killing the display manager
-	signal(SIGINT,SIG_IGN);
+	//signal(SIGINT,SIG_IGN);
 
 	//-------- mainloop to allow more then one login and logout ---------
+	//we need pam_systemd.so to trigger to set up a new session for us
+	set_xdg_env();
 	for (;;){
-		//------------ get username and password -------------
-		//start the tui
-		int result = tui_init();
-		if (result < 0){
-			fprintf(stderr,"tui would not start.\n");
-			return 1;
-		}
+		//------------ start tui ------------
+		tui_init();
+		//------------ attempt to login ------------
+		char *user = "harry";
+		char *password = "Sj57Lr1Z";
+		int desktop_index = 0;
+		tui_get_user_and_password(&user,&password,&desktop_index);
 
-
-		char *user = NULL;
-		char *password = NULL;
-		int desktop_index;
-		result = tui_get_user_and_password(&user,&password,&desktop_index);//allocates strings for us
-
-		//clean up after the tui
-		tui_end();
-		//printf("user: [%s]\npassword: [%s]\nstart command: [%s]\n",user,password,start_command);
-
-		//------------ check credentials with pam ------------
+		pam_handle_t *login_handle;
 		printf("verifying credentials\n");
-		//we need pam_systemd.so to trigger to set up a new session for us
-		set_xdg_env();
-		result = pam_login(user,password,NULL); //switch to desired user
+		int result = pam_login(user,password,&login_handle); //switch to desired user
+		printf("pam login successfull.\n");
 		if (result < 0){
 			fprintf(stderr,"could not log in\n");
-			goto logout;
-		}
-		printf("pam login successfull.\n");
-		
-		//------------ on success fork into new process -------
-		pid_t child_pid = fork();
-		if (child_pid < 0){
-			perror("fork");
-			return -1;
-		}
-		if (child_pid == 0){
+		}else{
+			//------------ on success fork into new process -------------
+			pid_t child_pid = fork();
+			if (child_pid < 0){
+				perror("fork");
+				return -1;
+			}
 			//==== child process ====
-			//create a new session
-			int result = setsid();
-			if (result < 0){
-				perror("setsid");
-				exit(1);
+			if (child_pid == 0){
+				//create a new session
+				int result = setsid();
+				if (result < 0){
+					perror("setsid");
+				}
+				result = set_ids(user);
+				if (result < 0){
+					fprintf(stderr,"Could not change user ids.\n");
+					exit(1);
+				}
+				init_env(user);
+				execl("/usr/bin/sh","-sh","-i",NULL);
 			}
-			result = set_ids(user);
+			//----------- wait for fork to exit -------------
+			int child_return;
+			result = waitpid(child_pid,&child_return,0);
 			if (result < 0){
-				fprintf(stderr,"Could not change user ids.\n");
-				exit(1);
+				perror("waitpid");
+				return -1;
 			}
-			init_env(user);
-			start_desktop(desktop_index,user);
-			//start_desktop only returns on failure
-			fprintf(stderr,"Could not start desktop.\n");
-			exit(1);
+			int child_status = WEXITSTATUS(child_return); //the return status of the fork
+			//------------ logout of pam ------------
+			pam_logout(login_handle);
 		}
-		//----------- wait for fork to exit -------------
-		int child_return;
-		result = waitpid(child_pid,&child_return,0);
-		if (result < 0){
-			perror("waitpid");
-			return -1;
-		}
-		int child_status = WEXITSTATUS(child_return); //the return status of the fork
-		//also wait for x server if it was spawned
-		wait_display_server();
-		//------------ log user out when the fork exits ---------
-		logout:
-		if (result >= 0) pam_logout(NULL); //dont logout if login failed
-		free(user); free(password);
-		//break;
-		//sleep(5);
+		free(user);
+		free(password);
 	}
 	//---------------- exit cleanup ------------	
 	free_desktops();
+	tui_end();
 }
 static int set_ids(char *user){
 	struct passwd *pw = getpwnam(user);

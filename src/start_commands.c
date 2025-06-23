@@ -11,17 +11,41 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-#define DESKTOP_CACHE_FILE "/var/cache/microdm/last_desktop"
+#define DESKTOP_CACHE_FOLDER "/var/cache/microdm"
+#define DESKTOP_CACHE_FILE DESKTOP_CACHE_FOLDER "/last_desktop"
 
 struct desktop {
 	char *display_name;
 	char *start_command;
 	char *compositor;
 };
+struct available_desktops {
+	int desktop_count = 0;
+	struct desktop **available_desktops;
+};
 
-static int desktop_count = 0;
 static pid_t display_server_pid = 0;
-static struct desktop **available_desktops = NULL;
+
+int mkdir_p(const char *path){
+	int result = mkdir(path,0777);
+	if (result < 0){
+		if (errno == ENOENT){
+			char *base_path = strdup(path);
+			if (strrchr(base_path,'/') == NULL) return -1;
+			*strrchr(base_path,'/') = '\0';
+			int result = mkdir_p(base_path);
+			free(base_path);
+			if (result == 0){
+				return mkdir_p(path);
+			}else{
+				return result;
+			}
+		}else{
+			return -1;
+		}
+	}
+	return 0;
+}
 
 static char *file_get_line(FILE *file){
 	if (feof(file)) return NULL;
@@ -115,20 +139,22 @@ static int load_from_dir(char *dir,char *compositor){
 	return 0;
 }
 
-int load_desktops(){
+struct available_desktops *load_desktops(){
+	struct available_desktops *desktops = malloc(sizeof(struct available_desktops));
 	//load wayland sesisons
-	int result = load_from_dir("/usr/share/wayland-sessions","wayland");
+	int result = load_from_dir(desktops,"/usr/share/wayland-sessions","wayland");
 	if (result < 0) return -1;
-
+	return desktops
 }
 
-void free_desktops(){
-	for (int i = 0; i < desktop_count; i++){
-		free(available_desktops[i]->display_name);
-		free(available_desktops[i]->start_command);
-		free(available_desktops[i]);
+void free_desktops(struct available_desktops *desktops){
+	for (int i = 0; i < desktops.desktop_count; i++){
+		free(desktops.available_desktops[i]->display_name);
+		free(desktops.available_desktops[i]->start_command);
+		free(desktops.available_desktops[i]);
 	}
-	free(available_desktops);
+	free(desktops->available_desktops);
+	free(desktops);
 }
 int get_desktop_count(){
 	return desktop_count;
@@ -158,6 +184,7 @@ int get_last_selected_desktop_index(){
 	return last_desktop_index;
 }
 int set_last_selected_desktop_index(int index){
+	mkdir_p(DESKTOP_CACHE_FOLDER);
 	FILE *cache = fopen(DESKTOP_CACHE_FILE,"wb");
 	if  (cache == NULL){
 		fprintf(stderr,"couldnt open cache.\n");
@@ -188,26 +215,6 @@ int wait_display_server(){
 	if (result < 0){
 		perror("waitpid");
 		return -1;
-	}
-	return 0;
-}
-int mkdir_p(const char *path){
-	int result = mkdir(path,0777);
-	if (result < 0){
-		if (errno == ENOENT){
-			char *base_path = strdup(path);
-			if (strrchr(base_path,'/') == NULL) return -1;
-			*strrchr(base_path,'/') = '\0';
-			int result = mkdir_p(base_path);
-			free(base_path);
-			if (result == 0){
-				return mkdir_p(path);
-			}else{
-				return result;
-			}
-		}else{
-			return -1;
-		}
 	}
 	return 0;
 }
