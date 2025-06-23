@@ -60,9 +60,6 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 	char *conversation_data[2] = {username,password};
 	struct pam_conv conversation = {pam_conversation_func,conversation_data};
 
-	if (pam_handle == NULL) pam_handle = &default_pam_handle; //use a global handle
-
-
 	//start pam
 	pam_result = pam_start("microdm",NULL,&conversation,pam_handle); //use our custom config file
 	if (pam_result != PAM_SUCCESS){
@@ -129,8 +126,6 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 int pam_logout(pam_handle_t *pam_handle){
 	int pam_result = PAM_SUCCESS; //placeholder so pam_end doesnt bug
 	int return_status = 0;
-
-	if (pam_handle == NULL) pam_handle = default_pam_handle; //use a global handle
 	
 	pam_result = pam_close_session(pam_handle, 0);
 	if (pam_result != PAM_SUCCESS){
