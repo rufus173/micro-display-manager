@@ -10,6 +10,7 @@
 #include "start_commands.h"
 #include <security/pam_appl.h>
 #include <security/pam_misc.h>
+#include <dlfcn.h>
 static void set_xdg_env();
 static void init_env(char *username);
 static int set_ids(char *user);
@@ -19,10 +20,14 @@ int main(int argc, char **argv){
 		fprintf(stderr,"Must be run as root.\n");
 		return -1;
 	}
-
 	if (load_desktops() < 0){
 		fprintf(stderr,"could not load available desktops\n");
 		return 1;
+	}
+	//------------ open the greeter shared object ------------
+	void *greeter_handle = dlopen("microdm-greeter.so",RTLD_LAZY);
+	if (greeter_handle == NULL){
+		printf("dlopen: %s\n",dlerror());
 	}
 	//return 0;
 
@@ -32,14 +37,15 @@ int main(int argc, char **argv){
 	//-------- mainloop to allow more then one login and logout ---------
 	//we need pam_systemd.so to trigger to set up a new session for us
 	set_xdg_env();
+	void *greeter_context = NULL;
 	for (;;){
 		//------------ start tui ------------
-		tui_init();
+		greeter_context = greeter_init();
 		//------------ attempt to login ------------
-		char *user = "harry";
-		char *password = "Sj57Lr1Z";
+		char *user = NULL;
+		char *password = NULL;
 		int desktop_index = 0;
-		tui_get_user_and_password(&user,&password,&desktop_index);
+		greeter_get_login_info(greeter_context,&user,&password,&desktop_index);
 
 		pam_handle_t *login_handle;
 		printf("verifying credentials\n");
@@ -47,6 +53,7 @@ int main(int argc, char **argv){
 		printf("pam login successfull.\n");
 		if (result < 0){
 			fprintf(stderr,"could not log in\n");
+			greeter_show_error("Login incorrect");
 		}else{
 			//------------ on success fork into new process -------------
 			pid_t child_pid = fork();
@@ -84,8 +91,13 @@ int main(int argc, char **argv){
 		free(password);
 	}
 	//---------------- exit cleanup ------------	
+	if (dlclose(greeter_handle) != 0){
+		printf("dlclose: %s\n",dlerror())
+		return 1;
+	}
 	free_desktops();
-	tui_end();
+	greeter_end(greeter_context);
+	greeter_context = NULL;
 }
 static int set_ids(char *user){
 	struct passwd *pw = getpwnam(user);
