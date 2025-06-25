@@ -19,4 +19,4 @@ microdm-greeter.so : greeter.o start_commands.o
 clean : 
 	rm *.o
 install : microdm microdm.service
-	./install
+	./installer

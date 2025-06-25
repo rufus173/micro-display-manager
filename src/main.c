@@ -127,7 +127,7 @@ int main(int argc, char **argv){
 			}
 			init_env(user);
 			//execl("/usr/bin/sh","-sh","-i",NULL);
-			start_desktop(desktops,desktop_index);
+			start_desktop(desktops,desktop_index,user);
 		}
 		//----------- wait for fork to exit -------------
 		int child_return;
