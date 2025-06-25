@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ncurses.h>
+#include <math.h>
 #include <locale.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -174,7 +175,7 @@ void print_boxed(WINDOW *window,int y,int x,int width,int height,const char *tex
 int show_message(const char *title,const char *message){
 	int max_length = MAX(COLS/3,strlen(title)+2);
 	int width = max_length+4;
-	int height = strlen(message)/max_length;
+	int height = ceil((double)strlen(message)/(double)max_length)+2;
 	WINDOW *message_window = newwin(height,width,LINES/2-height/2,COLS/2-width/2);
 	box(message_window,0,0);
 	mvwprintw(message_window,0,1,"%s",title);
@@ -185,6 +186,10 @@ int show_message(const char *title,const char *message){
 }
 int greeter_show_error(void *handle,const char *error){
 	show_message("Error",error);
+	return 0;
+}
+int greeter_show_info(void *handle,const char *message){
+	show_message("Info",message);
 	return 0;
 }
 void print_centred(WINDOW *window,int y,int x,int max_length,char *text){
