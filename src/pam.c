@@ -70,8 +70,8 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 	//set PAM_TTY
 	pam_result = pam_set_item(*pam_handle,PAM_TTY,"/dev/tty1");
 	if (pam_result != PAM_SUCCESS){
-		pam_end(*pam_handle,pam_result);
 		PAM_ERR("pam_result",*pam_handle,pam_result);
+		pam_end(*pam_handle,pam_result);
 		return pam_result;
 	}
 
@@ -79,7 +79,8 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 	pam_result = pam_authenticate(*pam_handle,0);
 	if (pam_result != PAM_SUCCESS){
 		//PAM_ERR("pam_authenticate",*pam_handle,pam_result);
-		goto end;
+		pam_end(*pam_handle,pam_result);
+		return pam_result;
 	}
 
 	//idk what this does but you need to do it

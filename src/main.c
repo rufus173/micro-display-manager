@@ -51,6 +51,7 @@ int main(int argc, char **argv){
 		fprintf(stderr,"greeter has not exported greeter_show_error symbol");
 		return 1;
 	}
+	/*--- testing --- testing --- testing ---
 	void *context = greeter_init(load_desktops());
 	for (;;){
 		char *user,*password;
@@ -61,9 +62,10 @@ int main(int argc, char **argv){
 		free(password);
 	}
 	greeter_end(context);
+	*/
 
 	//ignore sigint to stop CTRL-c killing the display manager
-	//signal(SIGINT,SIG_IGN);
+	signal(SIGINT,SIG_IGN);
 
 	//-------- mainloop to allow more then one login and logout ---------
 	//we need pam_systemd.so to trigger to set up a new session for us
@@ -104,6 +106,7 @@ int main(int argc, char **argv){
 				break;
 			}
 		}
+		greeter_end(greeter_context);
 		//------------ on success fork into new process -------------
 		pid_t child_pid = fork();
 		if (child_pid < 0){
@@ -123,7 +126,8 @@ int main(int argc, char **argv){
 				exit(1);
 			}
 			init_env(user);
-			execl("/usr/bin/sh","-sh","-i",NULL);
+			//execl("/usr/bin/sh","-sh","-i",NULL);
+			start_desktop(desktops,desktop_index);
 		}
 		//----------- wait for fork to exit -------------
 		int child_return;
@@ -144,7 +148,6 @@ int main(int argc, char **argv){
 		return 1;
 	}
 	free_desktops(desktops);
-	greeter_end(greeter_context);
 	greeter_context = NULL;
 }
 static int set_ids(char *user){
