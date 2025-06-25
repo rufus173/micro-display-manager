@@ -29,7 +29,7 @@ int main(int argc, char **argv){
 		return 1;
 	}
 	//------------ open the greeter shared object ------------
-	void *greeter_handle = dlopen("./microdm-greeter.so",RTLD_LAZY);
+	void *greeter_handle = dlopen("microdm-greeter.so",RTLD_LAZY);
 	if (greeter_handle == NULL){
 		printf("dlopen: %s\n",dlerror());
 		return 1;

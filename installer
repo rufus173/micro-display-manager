@@ -2,4 +2,5 @@
 cp microdm /usr/bin
 cp microdm.service /etc/systemd/system
 cp pam.d/microdm /etc/pam.d
+cp microdm-greeter.so /usr/lib
 mkdir -p /var/cache/microdm
