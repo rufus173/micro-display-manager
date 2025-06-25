@@ -16,12 +16,15 @@
 #define CLAMP_MAX(n,max) ((n < max) ? n : max)
 #define MAX_LABEL_WIDTH 16
 
+struct available_desktops *desktops = NULL;
+
 void print_centred(WINDOW *window,int y,int x,int max_length,char *text);
 int get_start_commands(char ***all_start_commands);
 void free_start_commands(char **all_start_commands,int max_start_commands);
+void print_boxed(WINDOW *window,int y,int x,int width,int height,const char *text);
 
 static int tty_fd;
-int tui_init(){
+void *greeter_init(struct available_desktops *available_desktops){
 	setlocale(LC_ALL,""); //fixes weird characters not displaying
 	initscr();
 	noecho();
@@ -29,13 +32,16 @@ int tui_init(){
 	curs_set(0);
 	keypad(stdscr, TRUE);
 	refresh();
-	return 0;
+	desktops = available_desktops;
+	//option to return a state that will be passed back to all the functions but i cba so globals it is
+	return (void *)1;
 }
-int tui_end(){
+int greeter_end(void *state){
 	endwin();
+	desktops = NULL;
 	return 0;
 }
-int tui_get_user_and_password(char **user, char **password, int *desktop_index){
+int greeter_get_login_info(void *state,char **user, char **password, int *desktop_index){
 	//======== prep ==========
 	//get required info
 	char **all_users = NULL;
@@ -51,7 +57,7 @@ int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 	}
 	endpwent();
 	
-	int max_start_commands = get_desktop_count(); //bad variable naming (sorry)
+	int max_start_commands = get_desktop_count(desktops); //bad variable naming (sorry)
 	
 	//ui
 	int window_width = 2;
@@ -61,7 +67,7 @@ int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 	WINDOW *login_window = newwin(window_height,window_width,window_y,window_x);
 	//user data
 	int selected_user = 0;
-	int selected_start_command = get_last_selected_desktop_index();
+	int selected_start_command = get_last_selected_desktop_index(desktops);
 	int entered_password_size = 1;
 	char *entered_password = malloc(1);
 	entered_password[0] = '\0';
@@ -81,7 +87,7 @@ int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 		window_width = 2;
 		window_width = MAX(window_width,max_username_len+4+MAX_LABEL_WIDTH); //4 for padding and MAX_LABEL_WIDTH for labels
 		window_width = MAX(window_width,entered_password_size+3+MAX_LABEL_WIDTH);
-		window_width = MAX(window_width,strlen(get_desktop_name(selected_start_command))+4+MAX_LABEL_WIDTH);
+		window_width = MAX(window_width,strlen(get_desktop_name(desktops,selected_start_command))+4+MAX_LABEL_WIDTH);
 		window_width = CLAMP_MAX(window_width,COLS);
 		window_x = (COLS/2)-(window_width/2);
 		
@@ -100,7 +106,7 @@ int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 		//start command label
 		mvwprintw(login_window,3,2,"Start command |");
 		//start command
-		print_centred(login_window,3,2+MAX_LABEL_WIDTH,window_width-4-MAX_LABEL_WIDTH,get_desktop_name(selected_start_command));
+		print_centred(login_window,3,2+MAX_LABEL_WIDTH,window_width-4-MAX_LABEL_WIDTH,get_desktop_name(desktops,selected_start_command));
 
 		
 
@@ -136,7 +142,7 @@ int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 				*user = strdup(all_users[selected_user]);
 				*password = strdup(entered_password);
 				*desktop_index = selected_start_command;
-				set_last_selected_desktop_index(selected_start_command);
+				set_last_selected_desktop_index(desktops,selected_start_command);
 				return 0;
 			default:
 				if (input < 32 || input > 126) break;
@@ -149,6 +155,36 @@ int tui_get_user_and_password(char **user, char **password, int *desktop_index){
 	//====== cleanup =======
 	for (int i = 0; i < user_count; i++) free(all_users[user_count]);
 	free(all_users);
+	delwin(login_window);
+	return 0;
+}
+void print_boxed(WINDOW *window,int y,int x,int width,int height,const char *text){
+	int current_y = y;
+	int current_x = x;
+	for (int i = 0; i < strlen(text); i++){
+		mvwprintw(window,current_y,current_x,"%c",text[i]);
+		current_x++;
+		if (current_x >= width+x){
+			current_y++;
+			current_x = x;
+		}
+		if (current_y >= height+y) break;
+	}
+}
+int show_message(const char *title,const char *message){
+	int max_length = MAX(COLS/3,strlen(title)+2);
+	int width = max_length+4;
+	int height = strlen(message)/max_length;
+	WINDOW *message_window = newwin(height,width,LINES/2-height/2,COLS/2-width/2);
+	box(message_window,0,0);
+	mvwprintw(message_window,0,1,"%s",title);
+	print_boxed(message_window,1,1,width-2,height-2,message);
+	wrefresh(message_window);
+	getch();
+	delwin(message_window);
+}
+int greeter_show_error(void *handle,const char *error){
+	show_message("Error",error);
 	return 0;
 }
 void print_centred(WINDOW *window,int y,int x,int max_length,char *text){

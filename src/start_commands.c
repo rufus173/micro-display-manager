@@ -20,7 +20,7 @@ struct desktop {
 	char *compositor;
 };
 struct available_desktops {
-	int desktop_count = 0;
+	int desktop_count;
 	struct desktop **available_desktops;
 };
 
@@ -96,7 +96,7 @@ static char *config_file_read_attribute(FILE *file,char *attribute){
 	}
 	return NULL; //no results
 }
-static int load_from_dir(char *dir,char *compositor){
+static int load_from_dir(struct available_desktops *desktops,char *dir,char *compositor){
 	DIR *desktop_sessions_dir = opendir(dir);
 	if (desktop_sessions_dir == NULL){
 		perror("opendir");
@@ -120,10 +120,10 @@ static int load_from_dir(char *dir,char *compositor){
 			return -1;
 		}
 		//initialise struct
-		desktop_count++;
-		available_desktops = realloc(available_desktops,sizeof(struct desktop*)*desktop_count);
+		desktops->desktop_count++;
+		desktops->available_desktops = realloc(desktops->available_desktops,sizeof(struct desktop*)*desktops->desktop_count);
 		struct desktop *entry = malloc(sizeof(struct desktop));
-		available_desktops[desktop_count-1] = entry;
+		desktops->available_desktops[desktops->desktop_count-1] = entry;
 
 		//set compositor
 		entry->compositor = compositor;
@@ -141,34 +141,35 @@ static int load_from_dir(char *dir,char *compositor){
 
 struct available_desktops *load_desktops(){
 	struct available_desktops *desktops = malloc(sizeof(struct available_desktops));
+	memset(desktops,0,sizeof(struct available_desktops));
 	//load wayland sesisons
 	int result = load_from_dir(desktops,"/usr/share/wayland-sessions","wayland");
-	if (result < 0) return -1;
-	return desktops
+	if (result < 0) return NULL;
+	return desktops;
 }
 
 void free_desktops(struct available_desktops *desktops){
-	for (int i = 0; i < desktops.desktop_count; i++){
-		free(desktops.available_desktops[i]->display_name);
-		free(desktops.available_desktops[i]->start_command);
-		free(desktops.available_desktops[i]);
+	for (int i = 0; i < desktops->desktop_count; i++){
+		free(desktops->available_desktops[i]->display_name);
+		free(desktops->available_desktops[i]->start_command);
+		free(desktops->available_desktops[i]);
 	}
 	free(desktops->available_desktops);
 	free(desktops);
 }
-int get_desktop_count(){
-	return desktop_count;
+int get_desktop_count(struct available_desktops *desktops){
+	return desktops->desktop_count;
 }
-char *get_desktop_name(int index){
-	return available_desktops[index]->display_name;
+char *get_desktop_name(struct available_desktops *desktops,int index){
+	return desktops->available_desktops[index]->display_name;
 }
-char *get_desktop_start_command(int index){
-	return available_desktops[index]->start_command;
+char *get_desktop_start_command(struct available_desktops *desktops,int index){
+	return desktops->available_desktops[index]->start_command;
 }
-char *get_desktop_compositor(int index){
-	return available_desktops[index]->compositor;
+char *get_desktop_compositor(struct available_desktops *desktops,int index){
+	return desktops->available_desktops[index]->compositor;
 }
-int get_last_selected_desktop_index(){
+int get_last_selected_desktop_index(struct available_desktops *desktops){
 	FILE *last_desktop_file = fopen(DESKTOP_CACHE_FILE,"rb");
 	if  (last_desktop_file == NULL){
 		fprintf(stderr,"couldnt open cache.\n");
@@ -183,7 +184,7 @@ int get_last_selected_desktop_index(){
 	fclose(last_desktop_file);
 	return last_desktop_index;
 }
-int set_last_selected_desktop_index(int index){
+int set_last_selected_desktop_index(struct available_desktops *desktops,int index){
 	mkdir_p(DESKTOP_CACHE_FOLDER);
 	FILE *cache = fopen(DESKTOP_CACHE_FILE,"wb");
 	if  (cache == NULL){
@@ -196,15 +197,15 @@ int set_last_selected_desktop_index(int index){
 	fclose(cache);
 	return 0;
 }
-int start_desktop(int desktop_index,char *user){
+int start_desktop(struct available_desktops *desktops,int desktop_index,char *user){
 	//switch to users home directory
 	chdir(getpwnam(user)->pw_dir);
 	char *user_shell = getpwnam(user)->pw_shell;
 	//=================== wayland sessions ================
-	if (strcmp(get_desktop_compositor(desktop_index),"wayland") == 0){
+	if (strcmp(get_desktop_compositor(desktops,desktop_index),"wayland") == 0){
 		//we just run the start command, and nothing else
-		printf("%s %s %s %s\n",user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index));
-		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktop_index),NULL);
+		printf("%s %s %s %s\n",user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktops,desktop_index));
+		execl(user_shell,basename(user_shell),"-lc",get_desktop_start_command(desktops,desktop_index),NULL);
 	}
 	//this function should not return unless an error occured
 	fprintf(stderr,"unrecognised desktop compositor.\n");
