@@ -1,4 +1,4 @@
-LFLAGS= -lpam -lpam_misc `pkg-config --libs gtk4` -lncursesw
+LFLAGS= -lpam -lpam_misc `pkg-config --libs gtk4` -lncursesw -lm
 CFLAGS=-g `pkg-config --cflags gtk4`
 CC=gcc
 
@@ -16,6 +16,10 @@ greeter.o : src/greeter.c src/greeter.h
 start_commands.o : src/start_commands.c
 	$(CC) $(CFLAGS) -fPIC -c src/start_commands.c
 microdm-greeter.so : greeter.o start_commands.o
-	gcc $^ -Wl,--export-dynamic -shared -o $@ $(LFLAGS)
+	$(CC) $^ -Wl,--export-dynamic -shared -o $@ $(LFLAGS)
+greeter-test.o : tests/greeter-test.c
+	$(CC) $(CFLAGS) -c $^
+greeter-test : greeter-test.o start_commands.o greeter.o
+	$(CC) $^ -o $@ $(LFLAGS)
 clean : 
 	rm *.o
