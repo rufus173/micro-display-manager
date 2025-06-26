@@ -10,7 +10,8 @@ This requires the libpam-dev, libgtk-4-dev, libncurses-dev package to be install
 # Compilation
 
 As usual, use `make microdm` to make the main executable.
-`sudo make install` will make and install the package.
+You will also need `make microdm-greeter.so` to make the greeter
+`sudo ./installer` will make and install the package + greeter.
 
 # About
 

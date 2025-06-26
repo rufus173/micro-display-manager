@@ -2,6 +2,7 @@ LFLAGS= -lpam -lpam_misc `pkg-config --libs gtk4` -lncursesw
 CFLAGS=-g `pkg-config --cflags gtk4`
 CC=gcc
 
+all : microdm microdm-greeter.so
 microdm : main.o pam.o graphical-interface.o start_commands.o
 	$(CC) $^ -o $@ $(LFLAGS)
 main.o : src/main.c src/pam.h src/start_commands.h
@@ -18,5 +19,3 @@ microdm-greeter.so : greeter.o start_commands.o
 	gcc $^ -Wl,--export-dynamic -shared -o $@ $(LFLAGS)
 clean : 
 	rm *.o
-install : microdm microdm.service
-	./installer
