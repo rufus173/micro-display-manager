@@ -189,7 +189,6 @@ int set_last_selected_desktop_index(struct available_desktops *desktops,int inde
 	FILE *cache = fopen(DESKTOP_CACHE_FILE,"wb");
 	if  (cache == NULL){
 		fprintf(stderr,"couldnt open cache.\n");
-		fclose(cache);
 		return -1;
 	}
 	uint32_t index_buffer = index;
