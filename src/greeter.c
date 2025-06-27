@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ncurses.h>
+#include <errno.h>
 #include <math.h>
 #include <locale.h>
 #include <unistd.h>
@@ -23,9 +25,17 @@ void print_centred(WINDOW *window,int y,int x,int max_length,char *text);
 int get_start_commands(char ***all_start_commands);
 void free_start_commands(char **all_start_commands,int max_start_commands);
 void print_boxed(WINDOW *window,int y,int x,int width,int height,const char *text);
+int redirect_stderr();
+int unredirect_stderr();
+char *format(char *format, ...);
 
 static int tty_fd;
+int stderr_old_fd;
+int stderr_pipe_out;
+int stderr_pipe_in;
+
 void *greeter_init(struct available_desktops *available_desktops){
+	redirect_stderr();
 	setlocale(LC_ALL,""); //fixes weird characters not displaying
 	initscr();
 	noecho();
@@ -40,9 +50,11 @@ void *greeter_init(struct available_desktops *available_desktops){
 int greeter_end(void *state){
 	endwin();
 	desktops = NULL;
+	unredirect_stderr();
 	return 0;
 }
 int greeter_get_login_info(void *state,char **user, char **password, int *desktop_index){
+	fprintf(stderr,"umm this is an error message\n");
 	//======== prep ==========
 	//get required info
 	char **all_users = NULL;
@@ -205,4 +217,56 @@ void print_centred(WINDOW *window,int y,int x,int max_length,char *text){
 
 	//actualy print
 	mvwprintw(window,y,centred_x,"%s",text);
+}
+int redirect_stderr(){
+	stderr_old_fd = dup(fileno(stderr));
+	int filedes[2];
+	if(pipe(filedes) != 0){
+		return errno;
+	}
+	stderr_pipe_out = filedes[0];
+	stderr_pipe_in = filedes[1];
+	char *new_stderr_filedes = format("/proc/self/fd/%d",stderr_pipe_in);
+	if (freopen(new_stderr_filedes,"w",stderr) == NULL){
+		free(new_stderr_filedes);
+		return errno;
+	}
+	free(new_stderr_filedes);
+	return 0;
+}
+int unredirect_stderr(){
+	char *old_fd_location = format("/proc/self/fd/%d",stderr_old_fd);
+	if (freopen(old_fd_location,"w",stderr) == NULL){
+		free(old_fd_location);
+		return errno;
+	}
+	free(old_fd_location);
+	//print any backlog left on the pipe
+	for (;;){
+		char buffer[24];
+		size_t size = read(stderr_pipe_out,buffer,sizeof(buffer));
+		if (size == 0) break; //done
+		if (size < 0){
+			perror("read");
+			close(stderr_pipe_out);
+			close(stderr_pipe_in);
+			return -1;
+		}
+		fwrite(buffer,1,size,stderr);
+		fflush(stderr);
+	}
+	close(stderr_pipe_out);
+	close(stderr_pipe_in);
+	return 0;
+}
+char *format(char *format, ...){
+	va_list args;
+	va_start(args,format);
+	//vsnprintf then malloc then vsnprintf
+	size_t size = vsnprintf(NULL,0,format,args);
+	char *formatted_string = malloc(size);
+	vsnprintf(formatted_string,size,format,args);
+	
+	va_end(args);
+	return formatted_string;
 }

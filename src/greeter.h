@@ -2,7 +2,7 @@
 #define _GREETER_H
 #include "start_commands.h"
 //return a handle that is passed to the other functions
-void *greeter_init();
+void *greeter_init(struct available_desktops *desktops);
 int greeter_end(void *handle);
 int greeter_get_login_info(void *handle,char **user, char **password, int *desktop_index);
 int greeter_show_error(void *handle,const char *messsage);
