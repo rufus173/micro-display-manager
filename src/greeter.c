@@ -42,7 +42,7 @@ void *greeter_init(struct available_desktops *available_desktops){
 	redirect_stderr();
 	setlocale(LC_ALL,""); //fixes weird characters not displaying
 	initscr();
-	stderr_output_window = newwin(LINES-5,0,4,COLS);
+	stderr_output_window = newwin(5,COLS,LINES-5,0);
 	scrollok(stderr_output_window,TRUE);
 	noecho();
 	cbreak();
@@ -255,6 +255,15 @@ int redirect_stderr(){
 		free(new_stderr_filedes);
 		return errno;
 	}
+	//change output to non blocking
+	int flags = fcntl(stderr_pipe_out,F_GETFL);
+	if (flags < 0){
+		perror("fcntl");
+	}
+	int result = fcntl(stderr_pipe_out,F_SETFL,flags | O_NONBLOCK);
+	if (result < 0){
+		perror("fcntl");
+	}
 	free(new_stderr_filedes);
 	return 0;
 }
@@ -298,27 +307,18 @@ char *format(char *format, ...){
 	return formatted_string;
 }
 int async_loop(){
-	struct pollfd fds = {
-		.fd = stderr_pipe_out,
-		.events = POLLOUT
-	};
-	int result = poll(&fds,1,0);
-	if (result < 0){
-		perror("poll");
-		return -1;
-	}
-	if (fds.revents & POLLOUT){
-		printw("stderr available");
-		refresh();
-		char buffer[1];
-		size_t count = read(stderr_pipe_out,buffer,sizeof(buffer));
-		if (count < 0){
+	char buffer[1];
+	size_t count = read(stderr_pipe_out,buffer,sizeof(buffer));
+	if (count < 0){
+		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)){
+			//skip as no data available on pipe
+		}else{
 			perror("read");
 			return -1;
 		}
-		if (count > 0){
-			waddch(stderr_output_window,buffer[0]);
-			wrefresh(stderr_output_window);
-		}
+	}
+	if (count > 0){
+		waddch(stderr_output_window,buffer[0]);
+		wrefresh(stderr_output_window);
 	}
 }
