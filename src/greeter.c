@@ -33,7 +33,6 @@ int async_loop();
 
 WINDOW *stderr_output_window;
 
-static int tty_fd;
 int stderr_old_fd;
 int stderr_pipe_out;
 int stderr_pipe_in;
@@ -92,9 +91,6 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 	entered_password[0] = '\0';
 	//======== mainloop =======
 	for (;;){
-		fprintf(stderr,"error\n");
-		char **start_commands = NULL;
-		int start_command_count = 0;
 		// --------------- render window -------------
 		werase(login_window);
 		clear();
@@ -219,6 +215,7 @@ int show_message(const char *title,const char *message){
 	wrefresh(message_window);
 	getch();
 	delwin(message_window);
+	return 0;
 }
 int greeter_show_error(void *handle,const char *error){
 	show_message("Error",error);
@@ -270,7 +267,7 @@ int redirect_stderr(){
 int unredirect_stderr(){
 	char *old_fd_location = format("/proc/self/fd/%d",stderr_old_fd);
 	if (freopen(old_fd_location,"w",stderr) == NULL){
-		printf("freopen - unridirect_stderr: %s\n",strerror(errno));
+		printf("freopen - unredirect_stderr: %s\n",strerror(errno));
 		free(old_fd_location);
 		return errno;
 	}
@@ -279,7 +276,7 @@ int unredirect_stderr(){
 	close(stderr_pipe_in);
 	for (;;){
 		char buffer[24];
-		size_t size = read(stderr_pipe_out,buffer,sizeof(buffer));
+		ssize_t size = read(stderr_pipe_out,buffer,sizeof(buffer));
 		if (size == 0) break; //done
 		if (size < 0){
 			perror("read");
@@ -307,8 +304,10 @@ char *format(char *format, ...){
 	return formatted_string;
 }
 int async_loop(){
-	char buffer[1];
-	size_t count = read(stderr_pipe_out,buffer,sizeof(buffer));
+	fprintf(stderr,"sample stderr output\n");
+	char buffer[1024];
+	errno = 0;
+	ssize_t count = read(stderr_pipe_out,buffer,sizeof(buffer));
 	if (count < 0){
 		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)){
 			//skip as no data available on pipe
@@ -318,7 +317,11 @@ int async_loop(){
 		}
 	}
 	if (count > 0){
-		waddch(stderr_output_window,buffer[0]);
+		//print out the pipe contents
+		for (ssize_t i = 0; i < count; i++){
+			waddch(stderr_output_window,buffer[i]);
+		}
 		wrefresh(stderr_output_window);
 	}
+	return 0;
 }

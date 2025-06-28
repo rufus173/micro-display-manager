@@ -1,5 +1,5 @@
 LFLAGS= -lpam -lpam_misc `pkg-config --libs gtk4` -lncursesw -lm
-CFLAGS=-g `pkg-config --cflags gtk4`
+CFLAGS=-g `pkg-config --cflags gtk4` -Wall
 CC=gcc
 
 all : microdm microdm-greeter.so
