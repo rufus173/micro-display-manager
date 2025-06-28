@@ -136,7 +136,8 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 				.fd = STDIN_FILENO,
 				.events = POLLIN
 			};
-			int result = poll(&fds,1,0);
+			//         wait at least 100 ms to stop eating the cpu
+			int result = poll(&fds,1,100);
 			if (result < 0){
 				perror("poll");
 				break;
@@ -316,7 +317,7 @@ int async_loop(){
 			return -1;
 		}
 	}
-	if (count > 0){
+	else if (count > 0){
 		//print out the pipe contents
 		for (ssize_t i = 0; i < count; i++){
 			waddch(stderr_output_window,buffer[i]);
