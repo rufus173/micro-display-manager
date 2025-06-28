@@ -237,11 +237,13 @@ int redirect_stderr(){
 int unredirect_stderr(){
 	char *old_fd_location = format("/proc/self/fd/%d",stderr_old_fd);
 	if (freopen(old_fd_location,"w",stderr) == NULL){
+		printf("freopen - unridirect_stderr: %s\n",strerror(errno));
 		free(old_fd_location);
 		return errno;
 	}
 	free(old_fd_location);
 	//print any backlog left on the pipe
+	close(stderr_pipe_in);
 	for (;;){
 		char buffer[24];
 		size_t size = read(stderr_pipe_out,buffer,sizeof(buffer));
@@ -249,24 +251,25 @@ int unredirect_stderr(){
 		if (size < 0){
 			perror("read");
 			close(stderr_pipe_out);
-			close(stderr_pipe_in);
 			return -1;
 		}
 		fwrite(buffer,1,size,stderr);
 		fflush(stderr);
 	}
 	close(stderr_pipe_out);
-	close(stderr_pipe_in);
 	return 0;
 }
 char *format(char *format, ...){
 	va_list args;
+	va_list duped_args;
 	va_start(args,format);
+	//the first vsnprintf "consumes" args, so we need a second for the second call
+	va_copy(duped_args,args);
 	//vsnprintf then malloc then vsnprintf
 	size_t size = vsnprintf(NULL,0,format,args);
-	char *formatted_string = malloc(size);
-	vsnprintf(formatted_string,size,format,args);
-	
+	char *formatted_string = malloc(size+1); //dont forget about the terminating null
+	size = vsnprintf(formatted_string,size+1,format,duped_args);
 	va_end(args);
+	va_end(duped_args);
 	return formatted_string;
 }
