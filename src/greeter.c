@@ -13,6 +13,7 @@
 #include <linux/vt.h>
 #include <pwd.h>
 #include "start_commands.h"
+#include <poll.h>
 
 #define MAX(n1,n2) ((n1 > n2) ? n1 : n2 )
 #define CLAMP_MIN(n,min) ((n > min) ? n : min)
@@ -28,6 +29,9 @@ void print_boxed(WINDOW *window,int y,int x,int width,int height,const char *tex
 int redirect_stderr();
 int unredirect_stderr();
 char *format(char *format, ...);
+int async_loop();
+
+WINDOW *stderr_output_window;
 
 static int tty_fd;
 int stderr_old_fd;
@@ -38,6 +42,8 @@ void *greeter_init(struct available_desktops *available_desktops){
 	redirect_stderr();
 	setlocale(LC_ALL,""); //fixes weird characters not displaying
 	initscr();
+	stderr_output_window = newwin(LINES-5,0,4,COLS);
+	scrollok(stderr_output_window,TRUE);
 	noecho();
 	cbreak();
 	curs_set(0);
@@ -48,13 +54,13 @@ void *greeter_init(struct available_desktops *available_desktops){
 	return (void *)1;
 }
 int greeter_end(void *state){
+	delwin(stderr_output_window);
 	endwin();
 	desktops = NULL;
 	unredirect_stderr();
 	return 0;
 }
 int greeter_get_login_info(void *state,char **user, char **password, int *desktop_index){
-	fprintf(stderr,"umm this is an error message\n");
 	//======== prep ==========
 	//get required info
 	char **all_users = NULL;
@@ -86,6 +92,7 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 	entered_password[0] = '\0';
 	//======== mainloop =======
 	for (;;){
+		fprintf(stderr,"error\n");
 		char **start_commands = NULL;
 		int start_command_count = 0;
 		// --------------- render window -------------
@@ -127,6 +134,23 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 		wrefresh(login_window);
 		refresh();
 		//--------------- input processing -------------
+		for (;;){
+			//=== check if data available on stdin ===
+			struct pollfd fds = {
+				.fd = STDIN_FILENO,
+				.events = POLLIN
+			};
+			int result = poll(&fds,1,0);
+			if (result < 0){
+				perror("poll");
+				break;
+			}
+			//run the update loop if no input available
+			if (!fds.revents & POLLIN) async_loop();
+			//continue the input loop if data available
+			else break;
+		}
+		//=== process inputs if they are available ===
 		int input = getch();
 		//mvprintw(0,0,"%d     %d     %d",input,KEY_LEFT,KEY_RIGHT);
 		switch (input){
@@ -272,4 +296,29 @@ char *format(char *format, ...){
 	va_end(args);
 	va_end(duped_args);
 	return formatted_string;
+}
+int async_loop(){
+	struct pollfd fds = {
+		.fd = stderr_pipe_out,
+		.events = POLLOUT
+	};
+	int result = poll(&fds,1,0);
+	if (result < 0){
+		perror("poll");
+		return -1;
+	}
+	if (fds.revents & POLLOUT){
+		printw("stderr available");
+		refresh();
+		char buffer[1];
+		size_t count = read(stderr_pipe_out,buffer,sizeof(buffer));
+		if (count < 0){
+			perror("read");
+			return -1;
+		}
+		if (count > 0){
+			waddch(stderr_output_window,buffer[0]);
+			wrefresh(stderr_output_window);
+		}
+	}
 }
