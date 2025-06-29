@@ -7,8 +7,6 @@
 
 #define PAM_ERR(fname,pam_handle,err_code) (fprintf(stderr,"%s(): %s() error: %s\n",__FUNCTION__,fname,pam_strerror(pam_handle,err_code)))
 
-static pam_handle_t *default_pam_handle;
-
 int pam_conversation_func(int num_msg, const struct pam_message **msg, struct pam_response **resp,void *appdata_ptr); //callback function
 int pam_login(char *username, char *password,pam_handle_t **pam_handle);
 int pam_logout(pam_handle_t *pam_handle);
@@ -78,7 +76,7 @@ int pam_login(char *username, char *password,pam_handle_t **pam_handle){
 	//authenitcate
 	pam_result = pam_authenticate(*pam_handle,0);
 	if (pam_result != PAM_SUCCESS){
-		//PAM_ERR("pam_authenticate",*pam_handle,pam_result);
+		PAM_ERR("pam_authenticate",*pam_handle,pam_result);
 		pam_end(*pam_handle,pam_result);
 		return pam_result;
 	}
