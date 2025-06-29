@@ -9,6 +9,7 @@ int main(int argc, char **argv){
 	char *user, *password;
 	int desktop_index;
 	void *state = greeter_init(desktops);
+	fprintf(stderr,"funciton: sample perror output\n");
 	greeter_get_login_info(state,&user,&password,&desktop_index);
 	greeter_show_error(state,"this is an incredibly long error message that i typed myself");
 	greeter_end(state);

@@ -21,6 +21,12 @@
 #define MAX_LABEL_WIDTH 16
 
 struct available_desktops *desktops = NULL;
+enum redirection_status {
+	UNDEFINED = 0,
+	REDIRECTED,
+	UNREDIRECTED
+};
+enum redirection_status stderr_redirection_status;
 
 void print_centred(WINDOW *window,int y,int x,int max_length,char *text);
 int get_start_commands(char ***all_start_commands);
@@ -37,12 +43,20 @@ int stderr_old_fd;
 int stderr_pipe_out;
 int stderr_pipe_in;
 
-void *greeter_init(struct available_desktops *available_desktops){
+void init_stderr_output(){
+	//only register atexit function once
 	redirect_stderr();
+	stderr_output_window = newwin(5,COLS,LINES-4,0);
+	scrollok(stderr_output_window,TRUE);
+}
+void end_stderr_output(){
+	delwin(stderr_output_window);
+	unredirect_stderr();
+}
+void *greeter_init(struct available_desktops *available_desktops){
 	setlocale(LC_ALL,""); //fixes weird characters not displaying
 	initscr();
-	stderr_output_window = newwin(5,COLS,LINES-5,0);
-	scrollok(stderr_output_window,TRUE);
+	init_stderr_output();
 	noecho();
 	cbreak();
 	curs_set(0);
@@ -53,10 +67,9 @@ void *greeter_init(struct available_desktops *available_desktops){
 	return (void *)1;
 }
 int greeter_end(void *state){
-	delwin(stderr_output_window);
+	end_stderr_output();
 	endwin();
 	desktops = NULL;
-	unredirect_stderr();
 	return 0;
 }
 int greeter_get_login_info(void *state,char **user, char **password, int *desktop_index){
@@ -128,6 +141,10 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 
 
 		wrefresh(login_window);
+		//print the stderr output window decorations
+		mvhline(LINES-5,0,0,COLS-1);
+		mvprintw(LINES-5,2," stderr ");
+
 		refresh();
 		//--------------- input processing -------------
 		for (;;){
@@ -137,7 +154,7 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 				.events = POLLIN
 			};
 			//         wait at least 100 ms to stop eating the cpu
-			int result = poll(&fds,1,100);
+			int result = poll(&fds,1,0);
 			if (result < 0){
 				perror("poll");
 				break;
@@ -241,31 +258,50 @@ void print_centred(WINDOW *window,int y,int x,int max_length,char *text){
 	mvwprintw(window,y,centred_x,"%s",text);
 }
 int redirect_stderr(){
+	if (stderr_redirection_status == REDIRECTED) return 0;
+	//make stderr a new file descriptor to restore from later
 	stderr_old_fd = dup(fileno(stderr));
+	//pipe
 	int filedes[2];
 	if(pipe(filedes) != 0){
 		return errno;
 	}
 	stderr_pipe_out = filedes[0];
 	stderr_pipe_in = filedes[1];
+	//dup2 the pipe onto stderr
+	int result = dup2(stderr_pipe_in,STDERR_FILENO);
+	if (result < 0){
+		perror("dup2");
+		close(stderr_old_fd);
+		close(stderr_pipe_in);
+		close(stderr_pipe_out);
+		return -1;
+	}
+
+	//TODO: new idea - use dup2 to change the stderr filedes to the pipe, then back
+	/*
 	char *new_stderr_filedes = format("/proc/self/fd/%d",stderr_pipe_in);
 	if (freopen(new_stderr_filedes,"w",stderr) == NULL){
 		free(new_stderr_filedes);
 		return errno;
 	}
+	free(new_stderr_filedes);
+	*/
 	//change output to non blocking
 	int flags = fcntl(stderr_pipe_out,F_GETFL);
 	if (flags < 0){
 		perror("fcntl");
 	}
-	int result = fcntl(stderr_pipe_out,F_SETFL,flags | O_NONBLOCK);
+	result = fcntl(stderr_pipe_out,F_SETFL,flags | O_NONBLOCK);
 	if (result < 0){
 		perror("fcntl");
 	}
-	free(new_stderr_filedes);
+	stderr_redirection_status = REDIRECTED;
 	return 0;
 }
 int unredirect_stderr(){
+	if (stderr_redirection_status == UNREDIRECTED) return 0;
+	/*
 	char *old_fd_location = format("/proc/self/fd/%d",stderr_old_fd);
 	if (freopen(old_fd_location,"w",stderr) == NULL){
 		printf("freopen - unredirect_stderr: %s\n",strerror(errno));
@@ -273,12 +309,23 @@ int unredirect_stderr(){
 		return errno;
 	}
 	free(old_fd_location);
+	*/
+	//dup2 the duped old stderr fd back onto the pipe
+	int result = dup2(stderr_old_fd,STDERR_FILENO);
+	close(stderr_old_fd);
+	if (result < 0){
+		close(stderr_old_fd);
+		close(stderr_pipe_in);
+		close(stderr_pipe_out);
+		return -1;
+	}
 	//print any backlog left on the pipe
-	close(stderr_pipe_in);
 	for (;;){
 		char buffer[24];
+		errno = 0;
 		ssize_t size = read(stderr_pipe_out,buffer,sizeof(buffer));
 		if (size == 0) break; //done
+		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) break;
 		if (size < 0){
 			perror("read");
 			close(stderr_pipe_out);
@@ -288,6 +335,7 @@ int unredirect_stderr(){
 		fflush(stderr);
 	}
 	close(stderr_pipe_out);
+	stderr_redirection_status = UNREDIRECTED;
 	return 0;
 }
 char *format(char *format, ...){
@@ -305,7 +353,6 @@ char *format(char *format, ...){
 	return formatted_string;
 }
 int async_loop(){
-	fprintf(stderr,"sample stderr output\n");
 	char buffer[1024];
 	errno = 0;
 	ssize_t count = read(stderr_pipe_out,buffer,sizeof(buffer));
