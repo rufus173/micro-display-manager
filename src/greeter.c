@@ -91,7 +91,7 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 	int max_start_commands = get_desktop_count(desktops); //bad variable naming (sorry)
 	
 	//ui
-	int window_width = 2;
+	int window_width = 20;
 	int window_height = 5;
 	int window_x = (COLS/2)-(window_width/2);
 	int window_y = (LINES/2)-(window_height/2);
@@ -102,15 +102,14 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 	int entered_password_size = 1;
 	char *entered_password = malloc(1);
 	entered_password[0] = '\0';
+	printw("left and right arrows: change user\nup and down arrows: change start command");
+	refresh();
 	//======== mainloop =======
 	for (;;){
 		// --------------- render window -------------
 		werase(login_window);
-		clear();
-		refresh();
 		
 		//controls
-		printw("left and right arrows: change user\nup and down arrows: change start command");
 
 		//regenerate required information to render
 		window_width = 2;
@@ -137,15 +136,18 @@ int greeter_get_login_info(void *state,char **user, char **password, int *deskto
 		//start command
 		print_centred(login_window,3,2+MAX_LABEL_WIDTH,window_width-4-MAX_LABEL_WIDTH,get_desktop_name(desktops,selected_start_command));
 
-		
-
-
-		wrefresh(login_window);
-		//print the stderr output window decorations
+		//clear leftover lines when login window shrinks
+		mvvline(window_y,window_x-1,' ',window_height);
+		mvvline(window_y,window_x+window_width,' ',window_height);
+		//stderr box
 		mvhline(LINES-5,0,0,COLS-1);
 		mvprintw(LINES-5,2," stderr ");
-
+		
 		refresh();
+		//wrefresh AFTER to keep it on top of stdscr
+		wrefresh(login_window);
+		//print the stderr output window decorations
+
 		//--------------- input processing -------------
 		for (;;){
 			//=== check if data available on stdin ===
