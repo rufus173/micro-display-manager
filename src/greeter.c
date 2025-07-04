@@ -234,6 +234,8 @@ int show_message(const char *title,const char *message){
 	print_boxed(message_window,1,1,width-2,height-2,message);
 	wrefresh(message_window);
 	getch();
+	werase(message_window);
+	wrefresh(message_window);
 	delwin(message_window);
 	return 0;
 }
